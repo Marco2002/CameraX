@@ -6,19 +6,26 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Size
 import android.graphics.Matrix
+import android.util.AttributeSet
 import android.util.Log
 import android.view.Surface
 import android.view.TextureView
+import kotlinx.coroutines.*
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.camera.core.*
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
+import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
-import java.nio.ByteBuffer
+import java.lang.invoke.ConstantCallSite
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 // This is an arbitrary number we are using to keep track of the permission
 // request. Where an app has multiple context for requesting permission,
@@ -30,47 +37,33 @@ private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 
 class MainActivity : AppCompatActivity() {
 
-    private class LuminosityAnalyzer : ImageAnalysis.Analyzer {
-        private var lastAnalyzedTimestamp = 0L
-
-        /**
-         * Helper extension function used to extract a byte array from an
-         * image plane buffer
-         */
-        private fun ByteBuffer.toByteArray(): ByteArray {
-            rewind()    // Rewind the buffer to zero
-            val data = ByteArray(remaining())
-            get(data)   // Copy the buffer into a byte array
-            return data // Return the byte array
-        }
-
-        override fun analyze(image: ImageProxy, rotationDegrees: Int) {
-            val currentTimestamp = System.currentTimeMillis()
-            // Calculate the average luma no more often than every second
-            if (currentTimestamp - lastAnalyzedTimestamp >=
-                TimeUnit.SECONDS.toMillis(1)) {
-                // Since format in ImageAnalysis is YUV, image.planes[0]
-                // contains the Y (luminance) plane
-                val buffer = image.planes[0].buffer
-                // Extract image data from callback object
-                val data = buffer.toByteArray()
-                // Convert the data into an array of pixel values
-                val pixels = data.map { it.toInt() and 0xFF }
-                // Compute average luminance for the image
-                val luma = pixels.average()
-                // Log the new luma value
-                Log.d("CameraXApp", "Average luminosity: $luma")
-                // Update timestamp of last analyzed frame
-                lastAnalyzedTimestamp = currentTimestamp
-            }
-        }
-    }
+    private val executor = Executors.newSingleThreadExecutor()
+    private lateinit var viewFinder: TextureView
+    private lateinit var previousPreview: ImageView
+    private val muraMasaHandler = MuraMasaHandler()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // init viewFinder and set responsive width and height
         viewFinder = findViewById(R.id.view_finder)
+        viewFinder.post {
+            viewFinder.layoutParams = ConstraintLayout.LayoutParams(
+            viewFinder.width,
+            (viewFinder.width * (4.0/3.0)).toInt())
+        }
+
+        // init previousPreview
+        previousPreview = findViewById(R.id.previous_preview)
+        // previousPreview by default loads the image rotated by 90 degrees
+        // to compensate this the view needs to bee rotated by 90 degrees (see xml)
+        // and the width, height and rotation pivot needs to be set as followed
+        previousPreview.post {
+            previousPreview.layoutParams = ConstraintLayout.LayoutParams((viewFinder.width.toFloat()*(4f/3f)).toInt(), viewFinder.width)
+            previousPreview.pivotX = viewFinder.width/2f
+            previousPreview.pivotY = viewFinder.width/2f
+        }
 
         // Request camera permissions
         if (allPermissionsGranted()) {
@@ -86,14 +79,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    private val executor = Executors.newSingleThreadExecutor()
-    private lateinit var viewFinder: TextureView
-
     private fun startCamera() {
         // Create configuration object for the viewfinder use case
         val previewConfig = PreviewConfig.Builder().apply {
-            setTargetResolution(Size(640, 480))
+            setTargetResolution(Size(680, 480)) // 4/3 aspect Ratio
         }.build()
 
 
@@ -115,6 +104,7 @@ class MainActivity : AppCompatActivity() {
         // Create configuration object for the image capture use case
         val imageCaptureConfig = ImageCaptureConfig.Builder()
             .apply {
+
                 // We don't set a resolution for image capture; instead, we
                 // select a capture mode which will infer the appropriate
                 // resolution based on aspect ration and requested mode
@@ -145,36 +135,22 @@ class MainActivity : AppCompatActivity() {
                         val msg = "Photo capture succeeded: ${file.absolutePath}"
                         Log.d("CameraXApp", msg)
                         viewFinder.post {
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                            // Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                            muraMasaHandler.addImage(file.absolutePath)
+                            updatePreviousPreview()
                         }
                     }
                 })
         }
 
-        // Add this before CameraX.bindToLifecycle
-
-        // Setup image analysis pipeline that computes average pixel luminance
-        val analyzerConfig = ImageAnalysisConfig.Builder().apply {
-            // In our analysis, we care more about the latest image than
-            // analyzing *every* image
-            setImageReaderMode(
-                ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
-        }.build()
-
-        // Build the image analysis use case and instantiate our analyzer
-        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
-            setAnalyzer(executor, LuminosityAnalyzer())
-        }
-
         // Bind use cases to lifecycle
-        // If Android Studio complains about "this" being not a LifecycleOwner
-        // try rebuilding the project or updating the appcompat dependency to
-        // version 1.1.0 or higher.
-        CameraX.bindToLifecycle(this, preview, imageCapture, analyzerUseCase)
+        CameraX.bindToLifecycle(this as LifecycleOwner, preview, imageCapture)
+        // CameraX.bindToLifecycle(this as LifecycleOwner, preview, imageCapture, analyzerUseCase)
     }
 
     private fun updateTransform() {
-         val matrix = Matrix()
+
+        val matrix = Matrix()
 
         // Compute the center of the view finder
         val centerX = viewFinder.width / 2f
@@ -192,6 +168,11 @@ class MainActivity : AppCompatActivity() {
 
         // Finally, apply transformations to our TextureView
         viewFinder.setTransform(matrix)
+    }
+
+    private fun updatePreviousPreview() = MainScope().launch {
+
+        previousPreview.setImageBitmap(muraMasaHandler.loadImage(muraMasaHandler.lastImage))
     }
 
     /**
