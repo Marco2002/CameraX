@@ -2,4 +2,5 @@
     <string name="app_name">CameraX</string>
     <string name="capture">capture</string>
     <string name="previous_image">previous image</string>
+    <string name="save">save</string>
 </resources>

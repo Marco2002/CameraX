@@ -1,10 +1,89 @@
 <component name="ProjectDictionaryState">
   <dictionary name="marcorodriguez">
     <words>
+      <w>accum</w>
+      <w>alphabiasshift</w>
+      <w>alphadec</w>
+      <w>alpharadbias</w>
+      <w>alpharadbshift</w>
+      <w>alterneigh</w>
+      <w>altersingle</w>
+      <w>ames</w>
+      <w>betagamma</w>
+      <w>betashift</w>
       <w>camerax</w>
+      <w>codetab</w>
+      <w>decvax</w>
+      <w>decwrl</w>
+      <w>defin</w>
+      <w>defs</w>
+      <w>dekker</w>
+      <w>descriptior</w>
+      <w>fprintf</w>
+      <w>gammashift</w>
+      <w>gifcompr</w>
+      <w>harpo</w>
+      <w>hsize</w>
+      <w>htab</w>
+      <w>ieee</w>
+      <w>ihnp</w>
+      <w>initalpha</w>
+      <w>initnet</w>
+      <w>initrad</w>
+      <w>initradius</w>
+      <w>insv</w>
+      <w>intbias</w>
+      <w>intbiasshift</w>
+      <w>introducer</w>
+      <w>inxbuild</w>
+      <w>inxsearch</w>
+      <w>iter</w>
+      <w>jcodec</w>
+      <w>knott</w>
+      <w>kohonen</w>
+      <w>lempel</w>
+      <w>lengthcount</w>
       <w>luma</w>
       <w>masa</w>
+      <w>maxbits</w>
+      <w>maxcode</w>
+      <w>maxmaxcode</w>
+      <w>maxnetpos</w>
+      <w>mcvax</w>
+      <w>minpicturebytes</w>
+      <w>miscompilation</w>
       <w>mura</w>
+      <w>muxer</w>
+      <w>ncycles</w>
+      <w>netbiasshift</w>
+      <w>netindex</w>
+      <w>netsize</w>
+      <w>neuquant</w>
+      <w>orost</w>
+      <w>peora</w>
+      <w>petsd</w>
+      <w>precomputation</w>
+      <w>quant</w>
+      <w>quantizer</w>
+      <w>radbias</w>
+      <w>radbiasshift</w>
+      <w>radiusbias</w>
+      <w>radiusbiasshift</w>
+      <w>radiusdec</w>
+      <w>radpower</w>
+      <w>rowley</w>
+      <w>samplefac</w>
+      <w>smallpos</w>
+      <w>smallval</w>
+      <w>thepic</w>
+      <w>thepicture</w>
+      <w>turkowski</w>
+      <w>turtlevax</w>
+      <w>unbias</w>
+      <w>unbiasnet</w>
+      <w>weiner</w>
+      <w>wordsize</w>
+      <w>writecolourmap</w>
     </words>
   </dictionary>
 </component>

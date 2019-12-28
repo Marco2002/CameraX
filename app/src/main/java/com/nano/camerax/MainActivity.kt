@@ -9,7 +9,7 @@ import android.util.Size
 import android.view.Surface
 import android.view.TextureView
 import android.view.ViewGroup
-import android.widget.ImageButton
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +22,11 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
+
+// TODO show angle Rotations
+// TODO improve save button
+// TODO reset button
+// TODO bug which disables the viewFinder when reopening app
 
 // This is an arbitrary number we are using to keep track of the permission
 // request. Where an app has multiple context for requesting permission,
@@ -65,6 +70,17 @@ class MainActivity : AppCompatActivity() {
             lastImagePreview.pivotY = viewFinder.width / 2f
         }
 
+        // save button
+        findViewById<Button>(R.id.save_button).setOnClickListener {
+            lastImagePreview.setImageResource(android.R.color.transparent)
+            muraMasaHandler.export(
+                File(
+                    externalMediaDirs.first(),
+                    "${System.currentTimeMillis()}.gif"
+                )
+            )
+        }
+
         // Request camera permissions
         if (allPermissionsGranted()) {
             viewFinder.post { startCamera() }
@@ -73,6 +89,7 @@ class MainActivity : AppCompatActivity() {
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
             )
         }
+
 
         // Every time the provided texture view changes, recompute layout
         viewFinder.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
@@ -110,15 +127,13 @@ class MainActivity : AppCompatActivity() {
                 // select a capture mode which will infer the appropriate
                 // resolution based on aspect ration and requested mode
                 setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
+                setTargetResolution(Size(1080, 1440))
             }.build()
 
         // Build the image capture use case and attach button click listener
         val imageCapture = ImageCapture(imageCaptureConfig)
-        findViewById<ImageButton>(R.id.capture_button).setOnClickListener {
-            val file = File(
-                externalMediaDirs.first(),
-                "${System.currentTimeMillis()}.jpg"
-            )
+        findViewById<Button>(R.id.capture_button).setOnClickListener {
+            val file = File(externalMediaDirs.first(), muraMasaHandler.nextFilename)
 
             imageCapture.takePicture(file, executor,
                 object : ImageCapture.OnImageSavedListener {
@@ -174,7 +189,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateLastImagePreview() = MainScope().launch {
-
         lastImagePreview.setImageBitmap(muraMasaHandler.loadImage(muraMasaHandler.lastImage))
     }
 
