@@ -10,6 +10,7 @@ import android.view.Surface
 import android.view.TextureView
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -27,6 +28,8 @@ import java.util.concurrent.Executors
 // TODO improve save button
 // TODO reset button
 // TODO bug which disables the viewFinder when reopening app
+// TODO gif preview
+// TODO set app name
 
 // This is an arbitrary number we are using to keep track of the permission
 // request. Where an app has multiple context for requesting permission,
@@ -70,8 +73,8 @@ class MainActivity : AppCompatActivity() {
             lastImagePreview.pivotY = viewFinder.width / 2f
         }
 
-        // save button
-        findViewById<Button>(R.id.save_button).setOnClickListener {
+        // save button:
+        findViewById<ImageButton>(R.id.save_button).setOnClickListener {
             lastImagePreview.setImageResource(android.R.color.transparent)
             muraMasaHandler.export(
                 File(
