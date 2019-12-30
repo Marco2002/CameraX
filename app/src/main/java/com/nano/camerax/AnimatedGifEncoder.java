@@ -3,6 +3,7 @@ package com.nano.camerax;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 
 import java.io.IOException;
@@ -54,6 +55,7 @@ public class AnimatedGifEncoder {
     protected boolean sizeSet = false; // if false, get size from first frame
 
     protected int sample = 10; // default sample interval for quantizer
+
 
     /**
      * Sets the delay time between each frame, or changes it for subsequent frames
@@ -115,7 +117,15 @@ public class AnimatedGifEncoder {
      * @param im BufferedImage containing frame to write.
      * @return true if successful.
      */
-    public boolean addFrame(Bitmap im) {
+    public boolean addFrame(Bitmap map) {
+
+        // rotate image, becouse its rotated 90 degrees by default (dont know why tho, please help)
+        Matrix matrix = new Matrix();
+        matrix.postRotate(90);
+
+        Bitmap im = Bitmap.createBitmap(map, 0, 0, map.getWidth(), map.getHeight(), matrix, true);
+
+
         if ((im == null) || !started) {
             return false;
         }

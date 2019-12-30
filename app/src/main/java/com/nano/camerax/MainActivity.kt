@@ -1,14 +1,21 @@
 package com.nano.camerax
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Matrix
 import android.os.Bundle
+import android.os.Environment
+import android.os.Environment.getExternalStoragePublicDirectory
+import android.os.Handler
 import android.util.Log
 import android.util.Size
 import android.view.Surface
 import android.view.TextureView
+import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -25,8 +32,6 @@ import java.io.File
 import java.util.concurrent.Executors
 
 // TODO show angle Rotations
-// TODO improve save button
-// TODO reset button
 // TODO bug which disables the viewFinder when reopening app
 // TODO gif preview
 // TODO set app name
@@ -44,7 +49,10 @@ class MainActivity : AppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private lateinit var viewFinder: TextureView
     private lateinit var lastImagePreview: ImageView
+    private lateinit var saveButton: ImageButton
+    private lateinit var cancelButton: ImageButton
     private val muraMasaHandler = MuraMasaHandler()
+    private val captureAnimation = AlphaAnimation(0f, 1f)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,15 +81,43 @@ class MainActivity : AppCompatActivity() {
             lastImagePreview.pivotY = viewFinder.width / 2f
         }
 
+        // capture animation init
+        // animate alpha to quickly go from 0 to 1 and back to 0
+        // to simulate photo camera capture effect
+        captureAnimation.apply {
+            duration = 80
+            repeatMode = Animation.REVERSE
+            repeatCount = 1
+        }
+
         // save button:
-        findViewById<ImageButton>(R.id.save_button).setOnClickListener {
+        saveButton = findViewById(R.id.save_button)
+        saveButton.visibility = View.INVISIBLE
+        saveButton.setOnClickListener {
             lastImagePreview.setImageResource(android.R.color.transparent)
-            muraMasaHandler.export(
-                File(
-                    externalMediaDirs.first(),
-                    "${System.currentTimeMillis()}.gif"
+            saveButton.visibility = View.INVISIBLE
+            cancelButton.visibility = View.INVISIBLE
+
+            val context = this as Context
+            MainScope().launch {
+                muraMasaHandler.export(
+                    File(
+                        getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).absolutePath
+                                + File.separator + "MuraMasa",
+                        "MuraMasa${System.currentTimeMillis()}.gif"
+                    ), context
                 )
-            )
+            }
+        }
+
+        // cancel button:
+        cancelButton = findViewById(R.id.cancel_button)
+        cancelButton.visibility = View.INVISIBLE
+        cancelButton.setOnClickListener {
+            lastImagePreview.setImageResource(android.R.color.transparent)
+            saveButton.visibility = View.INVISIBLE
+            cancelButton.visibility = View.INVISIBLE
+            muraMasaHandler.reset()
         }
 
         // Request camera permissions
@@ -158,7 +194,15 @@ class MainActivity : AppCompatActivity() {
                         viewFinder.post {
                             // Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
                             muraMasaHandler.addImage(file.absolutePath)
-                            updateLastImagePreview()
+                            captureEffect()
+                            if (cancelButton.visibility == View.INVISIBLE) {
+                                // enable cancel button after first image is taken
+                                cancelButton.visibility = View.VISIBLE
+                            } else if (saveButton.visibility == View.INVISIBLE) {
+                                // enable save button after second image is taken
+                                saveButton.visibility = View.VISIBLE
+                            }
+
                         }
                     }
                 })
@@ -191,8 +235,27 @@ class MainActivity : AppCompatActivity() {
         viewFinder.setTransform(matrix)
     }
 
-    private fun updateLastImagePreview() = MainScope().launch {
-        lastImagePreview.setImageBitmap(muraMasaHandler.loadImage(muraMasaHandler.lastImage))
+    private fun captureEffect() {
+        // make lastImagePreview all black but with 0 alpha
+        lastImagePreview.alpha = 1f
+        lastImagePreview.setImageDrawable(getDrawable(R.color.colorPrimary))
+
+        lastImagePreview.animation = captureAnimation
+        lastImagePreview.animation.start()
+
+        // set alpha to 0.3 10ms before animation ends
+        // to prevent an all black frame in between
+        Handler().postDelayed({
+            lastImagePreview.alpha = 0.3f
+            MainScope().launch {
+                // update lastImagePreview
+                lastImagePreview.setImageBitmap(
+                    muraMasaHandler.loadImage(
+                        muraMasaHandler.lastImage
+                    )
+                )
+            }
+        }, 70)
     }
 
     /**
