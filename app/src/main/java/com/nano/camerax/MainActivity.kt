@@ -16,13 +16,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
@@ -51,8 +47,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var lastImagePreview: ImageView
     private lateinit var saveButton: ImageButton
     private lateinit var cancelButton: ImageButton
+    private lateinit var imageCapture: ImageCapture
     private val muraMasaHandler = MuraMasaHandler()
     private val captureAnimation = AlphaAnimation(0f, 1f)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,10 +59,8 @@ class MainActivity : AppCompatActivity() {
         // init viewFinder and set responsive width and height
         viewFinder = findViewById(R.id.view_finder)
         viewFinder.post {
-            viewFinder.layoutParams = ConstraintLayout.LayoutParams(
-                viewFinder.width,
-                (viewFinder.width * (4.0 / 3.0)).toInt()
-            )
+            viewFinder.layoutParams.height = (viewFinder.width * (4.0 / 3.0)).toInt()
+
         }
 
         // init previousPreview
@@ -73,10 +69,10 @@ class MainActivity : AppCompatActivity() {
         // to compensate this the view needs to bee rotated by 90 degrees (see xml)
         // and the width, height and rotation pivot needs to be set as followed
         lastImagePreview.post {
-            lastImagePreview.layoutParams = ConstraintLayout.LayoutParams(
-                (viewFinder.width.toFloat() * (4f / 3f)).toInt(),
-                viewFinder.width
-            )
+            lastImagePreview.layoutParams.apply {
+                height = viewFinder.width
+                width = (viewFinder.width.toFloat() * (4f / 3f)).toInt()
+            }
             lastImagePreview.pivotX = viewFinder.width / 2f
             lastImagePreview.pivotY = viewFinder.width / 2f
         }
@@ -88,6 +84,11 @@ class MainActivity : AppCompatActivity() {
             duration = 80
             repeatMode = Animation.REVERSE
             repeatCount = 1
+        }
+
+        // flash button
+        findViewById<ToggleButton>(R.id.flash_button).setOnCheckedChangeListener { _, isChecked ->
+            imageCapture.flashMode = if (isChecked) FlashMode.ON else FlashMode.OFF
         }
 
         // save button:
@@ -167,10 +168,17 @@ class MainActivity : AppCompatActivity() {
                 // resolution based on aspect ration and requested mode
                 setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
                 setTargetResolution(Size(1080, 1440))
+
+                // flash mode
+                if (findViewById<ToggleButton>(R.id.flash_button).isChecked) {
+                    setFlashMode(FlashMode.ON)
+                } else {
+                    setFlashMode(FlashMode.OFF)
+                }
             }.build()
 
         // Build the image capture use case and attach button click listener
-        val imageCapture = ImageCapture(imageCaptureConfig)
+        imageCapture = ImageCapture(imageCaptureConfig)
         findViewById<Button>(R.id.capture_button).setOnClickListener {
             val file = File(externalMediaDirs.first(), muraMasaHandler.nextFilename)
 
@@ -243,10 +251,10 @@ class MainActivity : AppCompatActivity() {
         lastImagePreview.animation = captureAnimation
         lastImagePreview.animation.start()
 
-        // set alpha to 0.3 10ms before animation ends
+        // set alpha to 0.5 10ms before animation ends
         // to prevent an all black frame in between
         Handler().postDelayed({
-            lastImagePreview.alpha = 0.3f
+            lastImagePreview.alpha = 0.5f
             MainScope().launch {
                 // update lastImagePreview
                 lastImagePreview.setImageBitmap(
